@@ -9,6 +9,7 @@ contract ERC20Locker {
   constructor(bytes memory nearTokenFactory, INearProver prover) public;
   function lockToken(IERC20 token, uint256 amount, string memory accountId) public;
   function unlockToken(bytes memory proofData, uint64 proofBlockHeader) public;
+  function rebaseToken(...) public;
 }
 ```
 
@@ -20,6 +21,8 @@ struct BridgeTokenFactory {
     pub prover_account: AccountId,
     /// Address of the Ethereum locker contract.
     pub locker_address: [u8; 20],
+    // Address of the Ethereum token rebaser contract.
+    pub rebaser_address: [u8; 20],
     /// Hashes of the events that were already used.
     pub used_events: UnorderedSet<Vec<u8>>,
     /// Mapping from Ethereum tokens to NEAR tokens.
@@ -30,6 +33,7 @@ impl BridgeTokenFactory {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
     /// `locker_address`: Ethereum address of the locker contract, in hex.
+    /// `rebaser_address`: Ethereum address of the token rebaser contract, in hex.
     #[init]
     pub fn new(prover_account: AccountId, locker_address: String) -> Self;
 
@@ -38,15 +42,21 @@ impl BridgeTokenFactory {
     /// Send `mint` action to the token that is specified in the proof.
     #[payable]
     pub fn deposit(&mut self, proof: Proof);
-  
+
     /// A callback from BridgeToken contract deployed under this factory.
     /// Is called after tokens are burned there to create an receipt result `(amount, token_address, recipient_address)` for Ethereum to unlock the token.
     pub fn finish_withdraw(token_account: AccountId, amount: Balance, recipient: EvmAddress);
-    
+
     /// Transfers given NEP-21 token from `predecessor_id` to factory to lock.
     /// On success, leaves a receipt result `(amount, token_address, recipient_address)`.
     #[payable]
     pub fn lock(&mut self, token: AccountId, amount: Balance, recipient: String);
+
+    /// Relays the rebase event from Ethereum.
+    /// Uses prover to validate that proof is correct and relies on a canonical Ethereum chain.
+    /// Uses BridgeToken contract `rebase` action to revbase funds on NEAR accounts.
+    #[payable]
+    pub fn finish_rebase(&mut self, proof: Proof);
 
     /// Relays the unlock event from Ethereum.
     /// Uses prover to validate that proof is correct and relies on a canonical Ethereum chain.
@@ -75,8 +85,11 @@ impl BridgeToken {
     /// Setup the Token contract with given factory/controller.
     pub fn new(controller: AccountId) -> Self;
 
-    /// Mint tokens to given user. Only can be called by the controller.
+    /// Mint tokens to given user. Only called by the controller.
     pub fn mint(&mut self, account_id: AccountId, amount: Balance);
+
+    /// Rebase token on NEAR. Only called by the controller.
+    pub fn rebase(&mut self, ...);
 
     /// Withdraw tokens from this contract.
     /// Burns sender's tokens and calls controller to create event for relaying.
@@ -105,6 +118,7 @@ This will create `<<hex(erc20)>.<bridge_token_factory>>` NEP141-compatible contr
 6. `EthProver` will return callback to `BridgeTokenFactory` confirming that proof is correct.
 7. `BridgeTokenFactory` will call `<<hex(erc20)>.<bridge_token_factory>>.mint(<near_account_id>, <amount>)`.
 8. User can use `<<hex(erc20)>.<bridge_token_factory>>` token in other applications now on NEAR.
+9. //TODO: add flow for rebase usage flow
 
 ## Usage flow NEAR -> Ethereum
 
