@@ -1,4 +1,4 @@
-use bridge_common::prover::{EthAddress, EthEvent, EthEventParams};
+use bridge_common::prover::{EthAddress, EthLockEvent, EthEventParams};
 use ethabi::{ParamType, Token};
 use hex::ToHex;
 use near_sdk::{AccountId, Balance};
@@ -25,7 +25,7 @@ impl EthLockedEvent {
 
     /// Parse raw log entry data.
     pub fn from_log_entry_data(data: &[u8]) -> Self {
-        let event = EthEvent::from_log_entry_data("Locked", EthLockedEvent::event_params(), data);
+        let event = EthLockEvent::from_log_entry_data("Locked", EthLockedEvent::event_params(), data);
         let token = event.log.params[0].value.clone().to_address().unwrap().0;
         let token = (&token).encode_hex::<String>();
         let sender = event.log.params[1].value.clone().to_address().unwrap().0;
@@ -47,7 +47,7 @@ impl EthLockedEvent {
     }
 
     pub fn to_log_entry_data(&self) -> Vec<u8> {
-        EthEvent::to_log_entry_data(
+        EthLockEvent::to_log_entry_data(
             "Locked",
             EthLockedEvent::event_params(),
             self.locker_address,
