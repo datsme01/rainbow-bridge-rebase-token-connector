@@ -43,6 +43,12 @@ impl BridgeTokenFactory {
     #[payable]
     pub fn deposit(&mut self, proof: Proof);
 
+    /// Relays the rebase event from Ethereum.
+    /// Uses prover to validate that proof is correct and relies on a canonical Ethereum chain.
+    /// Send `rebase` action to the token that is specified in the proof.
+    #[payable]
+    pub fn rebase(&mut self, token: AccountId, epoch: U128, totalSupply: Balance);
+
     /// A callback from BridgeToken contract deployed under this factory.
     /// Is called after tokens are burned there to create an receipt result `(amount, token_address, recipient_address)` for Ethereum to unlock the token.
     pub fn finish_withdraw(token_account: AccountId, amount: Balance, recipient: EvmAddress);
@@ -51,12 +57,6 @@ impl BridgeTokenFactory {
     /// On success, leaves a receipt result `(amount, token_address, recipient_address)`.
     #[payable]
     pub fn lock(&mut self, token: AccountId, amount: Balance, recipient: String);
-
-    /// Relays the rebase event from Ethereum.
-    /// Uses prover to validate that proof is correct and relies on a canonical Ethereum chain.
-    /// Uses BridgeToken contract `rebase` action to revbase funds on NEAR accounts.
-    #[payable]
-    pub fn finish_rebase(&mut self, proof: Proof);
 
     /// Relays the unlock event from Ethereum.
     /// Uses prover to validate that proof is correct and relies on a canonical Ethereum chain.
@@ -89,7 +89,7 @@ impl BridgeToken {
     pub fn mint(&mut self, account_id: AccountId, amount: Balance);
 
     /// Rebase token on NEAR. Only called by the controller.
-    pub fn rebase(&mut self, ...);
+    pub fn rebase(&mut self, epoch: U128, totalSupply: Balance);
 
     /// Withdraw tokens from this contract.
     /// Burns sender's tokens and calls controller to create event for relaying.

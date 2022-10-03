@@ -13,6 +13,10 @@ use near_sdk::{
 /// Gas to call finish withdraw method on factory.
 const FINISH_WITHDRAW_GAS: Gas = Gas(Gas::ONE_TERA.0 * 50);
 
+/// TODO: calculate correct rebase gas fee
+/// Gas to call rebase method on bridge token.
+const REBASE_GAS: Gas = Gas(Gas::ONE_TERA.0 * 10);
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct BridgeToken {
@@ -29,6 +33,7 @@ pub struct BridgeToken {
 }
 
 const PAUSE_WITHDRAW: Mask = 1 << 0;
+const PAUSE_REBASE: Mask = 1 <<1;
 
 #[ext_contract(ext_bridge_token_factory)]
 pub trait ExtBridgeTokenFactory {
@@ -97,6 +102,55 @@ impl BridgeToken {
     }
 
     #[payable]
+    pub fn rebase(&mut self, epoch: U128, total_supply: Balance) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.controller,
+            "Only controller can call rrebase"
+        );
+        self.ft_rebase(epoch.clone(), total_supply.clone());
+    }
+
+    // /// Provide near rebase without dampening effect.
+    // /// This creates an opportunity for a arbitrage on the rebase token.
+    // #[payable]
+    // pub fn ft_rebase(&mut self, _epoch: u128, requested_adjustment: Balance) {
+    //     self.check_not_paused(PAUSE_REBASE);
+
+    //     assert_one_yocto();
+    //     Promise::new(env::predecessor_account_id()).transfer(1);
+
+    //     if requested_adjustment == 0 as Balance {
+    //         self.token.total_supply;
+    //     }
+    //     let _acc_iter = self._accounts.iter();
+    //     // ration requested adjustment across accounts
+    //     if requested_adjustment < 0 as Balance {
+    //         for _acc in _acc_iter {
+    //             self.token.internal_withdraw(
+    //                 &_acc,
+    //                 &requested_adjustment *
+    //                 Div::div(
+    //                     u128::from(self.token.accounts.get(_acc).unwrap_or(0)),
+    //                     u128::from(self.token.total_supply),
+    //                 ),
+    //             );
+    //         }
+    //     } else {
+    //         for _acc in _acc_iter {
+    //             self.token.internal_deposit(
+    //                 &_acc,
+    //                 &requested_adjustment *
+    //                 Div::div(
+    //                     u128::from(self.token.accounts.get(_acc).unwrap_or(0)),
+    //                     u128::from(self.token.total_supply),
+    //                 ),
+    //             );
+    //         }
+    //     }
+    // }
+
+    #[payable]
     pub fn withdraw(&mut self, amount: U128, recipient: String) -> Promise {
         self.check_not_paused(PAUSE_WITHDRAW);
 
@@ -119,6 +173,14 @@ impl BridgeToken {
     pub fn controller_or_self(&self) -> bool {
         let caller = env::predecessor_account_id();
         caller == self.controller || caller == env::current_account_id()
+    }
+}
+
+impl BridgeToken {
+    /// Provide near rebase without dampening effect.
+    /// This creates an opportunity for a arbitrage on the rebase token.
+    fn ft_rebase(&self, epoch: U128, total_supply: Balance) {
+
     }
 }
 
